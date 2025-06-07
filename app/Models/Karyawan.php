@@ -10,7 +10,7 @@ class Karyawan extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    protected $connection = 'pgsql2'; // <- Tambahkan ini
+    protected $connection = 'pgsql2'; // koneksi database khusus karyawan
     protected $table = 'karyawan';
 
     protected $fillable = [
@@ -21,26 +21,17 @@ class Karyawan extends Authenticatable
         'password',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    protected $casts = [
+        'password' => 'hashed',
+    ];
+
+    public function gajis()
     {
-        return [
-            'password' => 'hashed',
-        ];
+        return $this->hasMany(Gaji::class, 'karyawan_id');
     }
 }
-

@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\GajiSayaController;
+use App\Http\Controllers\DokumenController;
 
 Route::get('/', function () {
     return Inertia::render('welcome');
@@ -12,7 +14,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
     Route::get('/gajiSaya', [GajiSayaController::class, 'index'])->name('gaji.saya');
-    Route::get('/gajiGolongan', [GajiGolonganController::class, 'index'])->name('gaji.golongan');
     Route::get('/dokumen', [DokumenController::class, 'index'])->name('dokumen');
 });
 
