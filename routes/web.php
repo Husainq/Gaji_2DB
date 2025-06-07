@@ -11,6 +11,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
+    Route::get('/gajiSaya', [GajiSayaController::class, 'index'])->name('gaji.saya');
+    Route::get('/gajiGolongan', [GajiGolonganController::class, 'index'])->name('gaji.golongan');
+    Route::get('/dokumen', [DokumenController::class, 'index'])->name('dokumen');
 });
 
 require __DIR__.'/settings.php';
