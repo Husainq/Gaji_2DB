@@ -3,11 +3,8 @@
 namespace App\Http\Controllers;
 
 use Inertia\Inertia;
-use Illuminate\Support\Facades\Auth;
-use App\Models\Gaji;
-use App\Models\JadwalKerja;
 use Illuminate\Http\Request;
-use App\Models\Karyawan;
+use Carbon\Carbon;
 
 class GajiSayaController extends Controller
 {
@@ -18,60 +15,59 @@ class GajiSayaController extends Controller
         $bulan = $request->input('bulan', date('m'));
         $tahun = $request->input('tahun', date('Y'));
 
-        $jadwalKerja = JadwalKerja::with(['presensi.keterlambatan'])
+        // Ambil semua presensi milik karyawan bulan ini (termasuk cuti)
+        $presensis = \App\Models\Presensi::with(['jadwalKerja.shift'])
             ->where('karyawan_id', $karyawan->id)
-            ->whereYear('tanggalKerja', $tahun)
-            ->whereMonth('tanggalKerja', $bulan)
+            ->whereYear('tanggalPresensi', $tahun)
+            ->whereMonth('tanggalPresensi', $bulan)
             ->get();
 
-        $hariKerja = $jadwalKerja->where('statusKerja', '!=', 'cuti')->count();
-        $hariHadir = $jadwalKerja->filter(fn($jadwal) => $jadwal->statusKerja != 'cuti' && $jadwal->presensi != null)->count();
+        $hariKerja = $presensis->count(); // semua data presensi, termasuk cuti
+        $hariHadir = $presensis->whereNotNull('waktuMasuk')->count();
 
-        $potonganPerHari = 100000;
-        $jumlahPotongan = max(0, ($hariKerja - $hariHadir) * $potonganPerHari);
+        // Inisialisasi potongan
+        $potonganTidakPresensi = 0;
+        $potonganTerlambat = 0;
 
-        $potonganPerTerlambat = 50000;
-        $jumlahTerlambat = $jadwalKerja->reduce(function ($carry, $jadwal) {
-            return $carry + (($jadwal->presensi && $jadwal->presensi->keterlambatan) ? 1 : 0);
-        }, 0);
+        foreach ($presensis as $presensi) {
+            $statusMasuk = $presensi->statusMasuk;
 
-        $potonganTerlambat = $jumlahTerlambat * $potonganPerTerlambat;
-        $totalPotongan = $jumlahPotongan + $potonganTerlambat;
-
-        // Cek apakah sudah ada data gaji di tabel
-        $gajiRecord = Gaji::where('karyawan_id', $karyawan->id)
-            ->where('bulan', $bulan)
-            ->where('tahun', $tahun)
-            ->first();
-
-        // Jika ada, gunakan nilai dari database
-        if ($gajiRecord) {
-            $gajiPokok = $gajiRecord->gaji_utama;
-        } else {
-            // Jika belum ada, tentukan berdasarkan golongan
-            $golongan = strtolower($karyawan->golongan); // pastikan lowercase agar lebih aman
-
-            switch ($golongan) {
-                case 'staff':
-                    $gajiPokok = 3000000;
-                    break;
-                case 'asisten':
-                    $gajiPokok = 6000000;
-                    break;
-                case 'kepala subbagian':
-                    $gajiPokok = 10000000;
-                    break;
-                case 'kepala bagian':
-                    $gajiPokok = 15000000;
-                    break;
-                case 'direksi':
-                    $gajiPokok = 20000000;
-                    break;
-                default:
-                    $gajiPokok = 0; // fallback
-                    break;
+            // Lewati jika status cuti, tidak kena potongan apa pun
+            if ($statusMasuk === 'Cuti') {
+                continue;
             }
+
+            // Potongan karena tidak presensi masuk
+            if (!$presensi->waktuMasuk || $statusMasuk === 'Tidak Presensi Masuk') {
+                $potonganTidakPresensi += 300000;
+            }
+            // Potongan keterlambatan
+            else if ($statusMasuk === 'Terlambat' && $presensi->jadwalKerja && $presensi->jadwalKerja->shift) {
+                $jamMasuk = \Carbon\Carbon::parse($presensi->waktuMasuk);
+                $jamShift = \Carbon\Carbon::parse($presensi->jadwalKerja->shift->waktuMulai);
+
+                if ($jamMasuk->gt($jamShift)) {
+                    $selisihMenit = $jamMasuk->diffInMinutes($jamShift);
+                    $potonganHariIni = ceil($selisihMenit / 10) * 50000;
+                    $potonganTerlambat += min($potonganHariIni, 300000); // maksimal 300 ribu per hari
+                }
+            }
+            // Kalau 'Tepat Waktu' otomatis aman, tidak ada potongan
         }
+
+        // Total potongan
+        $totalPotongan = $potonganTidakPresensi + $potonganTerlambat;
+
+        // Gaji Pokok berdasarkan golongan
+        $golongan = strtolower($karyawan->golongan);
+        $gajiPokok = match ($golongan) {
+            'staff' => 3000000,
+            'asisten' => 6000000,
+            'kepala subbagian' => 10000000,
+            'kepala bagian' => 15000000,
+            'direksi' => 20000000,
+            default => 0,
+        };
 
         $totalGaji = max(0, $gajiPokok - $totalPotongan);
 
@@ -82,10 +78,11 @@ class GajiSayaController extends Controller
                 'gaji_pokok' => $gajiPokok,
                 'potongan_gaji' => $totalPotongan,
                 'total_gaji' => $totalGaji,
-                'jumlah_terlambat' => $jumlahTerlambat,
+                'hari_kerja' => $hariKerja,
+                'hari_hadir' => $hariHadir,
+                'potongan_tidak_presensi' => $potonganTidakPresensi,
+                'potongan_terlambat' => $potonganTerlambat,
             ],
         ]);
     }
-
-
 }
