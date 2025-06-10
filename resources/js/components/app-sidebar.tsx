@@ -29,11 +29,6 @@ const mainNavItems: NavItem[] = [
         href: '/gajiSaya',
         icon: Banknote,
     },
-    {
-        title: 'Dokumen Gaji',
-        href: '/dokumen',
-        icon: Folder,
-    },
 ];
 
 const footerNavItems: NavItem[] = [

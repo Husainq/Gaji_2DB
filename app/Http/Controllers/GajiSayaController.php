@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use App\Models\Presensi;
 
 class GajiSayaController extends Controller
 {
@@ -12,53 +13,64 @@ class GajiSayaController extends Controller
     {
         $karyawan = auth()->user();
 
-        $bulan = $request->input('bulan', date('m'));
-        $tahun = $request->input('tahun', date('Y'));
+        $bulan = (int) $request->input('bulan', date('m'));
+        $tahun = (int) $request->input('tahun', date('Y'));
 
-        // Ambil semua presensi milik karyawan bulan ini (termasuk cuti)
-        $presensis = \App\Models\Presensi::with(['jadwalKerja.shift'])
+        // Ambil semua presensi karyawan
+        $semuaPresensi = Presensi::with(['jadwalKerja.shift'])
             ->where('karyawan_id', $karyawan->id)
-            ->whereYear('tanggalPresensi', $tahun)
-            ->whereMonth('tanggalPresensi', $bulan)
             ->get();
 
-        $hariKerja = $presensis->count(); // semua data presensi, termasuk cuti
+        // Jika tidak ada data sama sekali, langsung return null
+        if ($semuaPresensi->isEmpty()) {
+            return Inertia::render('gajiSaya', [
+                'gaji' => null,
+                'selectedBulan' => $bulan,
+                'selectedTahun' => $tahun,
+            ]);
+        }
+
+        // Filter berdasarkan bulan & tahun
+        $presensis = $semuaPresensi->filter(function ($item) use ($bulan, $tahun) {
+            return Carbon::parse($item->tanggalPresensi)->month == $bulan &&
+                   Carbon::parse($item->tanggalPresensi)->year == $tahun;
+        });
+
+        // Jika hasil filter kosong, juga return null
+        if ($presensis->isEmpty()) {
+            return Inertia::render('gajiSaya', [
+                'gaji' => null,
+                'selectedBulan' => $bulan,
+                'selectedTahun' => $tahun,
+            ]);
+        }
+
+        $hariKerja = $presensis->count();
         $hariHadir = $presensis->whereNotNull('waktuMasuk')->count();
 
-        // Inisialisasi potongan
         $potonganTidakPresensi = 0;
         $potonganTerlambat = 0;
 
         foreach ($presensis as $presensi) {
             $statusMasuk = $presensi->statusMasuk;
 
-            // Lewati jika status cuti, tidak kena potongan apa pun
-            if ($statusMasuk === 'Cuti') {
-                continue;
-            }
+            if ($statusMasuk === 'Cuti') continue;
 
-            // Potongan karena tidak presensi masuk
             if (!$presensi->waktuMasuk || $statusMasuk === 'Tidak Presensi Masuk') {
                 $potonganTidakPresensi += 300000;
-            }
-            // Potongan keterlambatan
-            else if ($statusMasuk === 'Terlambat' && $presensi->jadwalKerja && $presensi->jadwalKerja->shift) {
-                $jamMasuk = \Carbon\Carbon::parse($presensi->waktuMasuk);
-                $jamShift = \Carbon\Carbon::parse($presensi->jadwalKerja->shift->waktuMulai);
-
+            } elseif ($statusMasuk === 'Terlambat' && $presensi->jadwalKerja && $presensi->jadwalKerja->shift) {
+                $jamMasuk = Carbon::parse($presensi->waktuMasuk);
+                $jamShift = Carbon::parse($presensi->jadwalKerja->shift->waktuMulai);
                 if ($jamMasuk->gt($jamShift)) {
                     $selisihMenit = $jamMasuk->diffInMinutes($jamShift);
                     $potonganHariIni = ceil($selisihMenit / 10) * 50000;
-                    $potonganTerlambat += min($potonganHariIni, 300000); // maksimal 300 ribu per hari
+                    $potonganTerlambat += min($potonganHariIni, 300000);
                 }
             }
-            // Kalau 'Tepat Waktu' otomatis aman, tidak ada potongan
         }
 
-        // Total potongan
         $totalPotongan = $potonganTidakPresensi + $potonganTerlambat;
 
-        // Gaji Pokok berdasarkan golongan
         $golongan = strtolower($karyawan->golongan);
         $gajiPokok = match ($golongan) {
             'staff' => 3000000,
@@ -76,13 +88,15 @@ class GajiSayaController extends Controller
                 'bulan' => $bulan,
                 'tahun' => $tahun,
                 'gaji_pokok' => $gajiPokok,
+                'potongan_terlambat' => $potonganTerlambat,
+                'potongan_tidak_presensi' => $potonganTidakPresensi,
                 'potongan_gaji' => $totalPotongan,
                 'total_gaji' => $totalGaji,
                 'hari_kerja' => $hariKerja,
                 'hari_hadir' => $hariHadir,
-                'potongan_tidak_presensi' => $potonganTidakPresensi,
-                'potongan_terlambat' => $potonganTerlambat,
             ],
+            'selectedBulan' => $bulan,
+            'selectedTahun' => $tahun,
         ]);
     }
 }
