@@ -4,8 +4,8 @@ import laravel from 'laravel-vite-plugin';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
-export default defineConfig({
-    base: '/build/' ,
+export default defineConfig(({ mode }) => ({
+    base: mode === 'production' ? 'https://gaji2db-production.up.railway.app/build/' : '/build/',
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],
