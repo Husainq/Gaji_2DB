@@ -98,7 +98,7 @@ return [
         ],
 
         'pgsql2' => [
-            'driver' => 'pgsql',
+            'driver' => 'mysql',
             'url' => env('DATABASE_URL'),
             'host' => env('DB2_HOST', '127.0.0.1'),
             'port' => env('DB2_PORT', '5432'),
