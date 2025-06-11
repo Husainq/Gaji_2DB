@@ -4,8 +4,8 @@ import laravel from 'laravel-vite-plugin';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
-export default defineConfig(({ mode }) => ({
-    base: mode === 'production' ? 'https://gaji2db-production.up.railway.app/build/' : '/build/',
+export default defineConfig({
+    base: '/build/' ,
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],
@@ -23,4 +23,4 @@ export default defineConfig(({ mode }) => ({
             'ziggy-js': resolve(__dirname, 'vendor/tightenco/ziggy'),
         },
     },
-}));
+});
