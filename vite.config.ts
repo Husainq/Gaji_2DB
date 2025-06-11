@@ -23,4 +23,4 @@ export default defineConfig(({ mode }) => ({
             'ziggy-js': resolve(__dirname, 'vendor/tightenco/ziggy'),
         },
     },
-});
+}));
