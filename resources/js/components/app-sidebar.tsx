@@ -45,7 +45,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href="/dashboard" prefetch>
+                            <Link href="/gajiSaya" prefetch>
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
@@ -59,12 +59,6 @@ export function AppSidebar() {
                     Menu 
                 </div>
                 <NavMain items={mainNavItems} />
-
-                {/* Tambahan untuk Admin atau Section lainnya jika mau */}
-                {/* <div className="px-4 mt-6 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Admin
-                </div>
-                <NavMain items={adminNavItems} /> */}
             </SidebarContent>
 
             {/* Footer */}
