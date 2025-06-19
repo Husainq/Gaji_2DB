@@ -14,17 +14,24 @@ const breadcrumbs: BreadcrumbItem[] = [
   { title: 'Gaji Saya', href: '/gajiSaya' },
 ];
 
+// ✅ Fungsi format bulan dalam Bahasa Indonesia
+const bulanNama = (bulan: number) => {
+  const formatter = new Intl.DateTimeFormat('id-ID', { month: 'long' });
+  const date = new Date(2023, bulan - 1); // Tahun bebas, hanya ambil bulan
+  return formatter.format(date);
+};
+
+// ✅ Fungsi format tanggal lengkap (hari, tanggal, bulan, tahun)
+const formatTanggalIndonesia = (tanggal: string) => {
+  const tgl = new Date(tanggal);
+  return tgl.toLocaleDateString('id-ID', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  });
+};
+
 export default function GajiSaya({ gaji, selectedBulan, selectedTahun }: any) {
   const [bulan, setBulan] = useState(String(selectedBulan || new Date().getMonth() + 1));
   const [tahun, setTahun] = useState(String(selectedTahun || new Date().getFullYear()));
-
-  const bulanNama = (bulan: number) => {
-    const bulanList = [
-      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
-    return bulanList[bulan - 1] || 'Invalid';
-  };
 
   const handleFilter = (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,11 +105,42 @@ export default function GajiSaya({ gaji, selectedBulan, selectedTahun }: any) {
               </TableBody>
             </Table>
 
-            {/* Info Hari Kerja dan Hari Hadir */}
+            {/* Info Hari Kerja dan Hadir */}
             <div className="mt-6 p-4 rounded-md bg-gray-100 dark:bg-gray-900 text-sm text-gray-800 dark:text-gray-200 space-y-1">
               <p><strong>Jumlah Hari Kerja:</strong> {gaji.hari_kerja} Hari</p>
-              <p><strong>Jumlah Hadir:</strong> {gaji.hari_hadir}</p>
+              <p><strong>Jumlah Hadir:</strong> {gaji.hari_hadir} Hari</p>
             </div>
+
+            {/* Tabel Detail Keterlambatan */}
+            {Array.isArray(gaji.terlambat_detail) && gaji.terlambat_detail.length > 0 && (
+              <div className="mt-6">
+                <h2 className="text-base font-semibold mb-2 text-gray-700 dark:text-gray-100">
+                  Detail Keterlambatan
+                </h2>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tanggal</TableHead>
+                      <TableHead>Jam Shift</TableHead>
+                      <TableHead>Jam Masuk</TableHead>
+                      <TableHead>Selisih (menit)</TableHead>
+                      <TableHead>Potongan</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {gaji.terlambat_detail.map((item: any, index: number) => (
+                      <TableRow key={index}>
+                        <TableCell>{item.tanggal}</TableCell>
+                        <TableCell>{item.jam_shift}</TableCell>
+                        <TableCell>{item.jam_masuk}</TableCell>
+                        <TableCell>{Math.ceil(Number(item.selisih_menit))}</TableCell>
+                        <TableCell>{`Rp${Number(item.potongan).toLocaleString('id-ID')}`}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </>
         ) : (
           <p className="text-gray-600 dark:text-gray-300">
