@@ -123,7 +123,7 @@ export default function GajiSaya({ gaji, selectedBulan, selectedTahun }: any) {
                       <TableHead>Tanggal</TableHead>
                       <TableHead>Jam Shift</TableHead>
                       <TableHead>Jam Masuk</TableHead>
-                      <TableHead>Selisih (menit)</TableHead>
+                      <TableHead>Keterlambatan</TableHead>
                       <TableHead>Potongan</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -133,7 +133,7 @@ export default function GajiSaya({ gaji, selectedBulan, selectedTahun }: any) {
                         <TableCell>{item.tanggal}</TableCell>
                         <TableCell>{item.jam_shift}</TableCell>
                         <TableCell>{item.jam_masuk}</TableCell>
-                        <TableCell>{Math.ceil(Number(item.selisih_menit))}</TableCell>
+                        <TableCell>{Math.ceil(Number(item.selisih_menit))} menit</TableCell>
                         <TableCell>{`Rp${Number(item.potongan).toLocaleString('id-ID')}`}</TableCell>
                       </TableRow>
                     ))}

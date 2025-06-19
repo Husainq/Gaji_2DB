@@ -76,7 +76,7 @@ class GajiSayaController extends Controller
                     $potonganTerlambat += $potonganHariIni;
 
                     $daftarTerlambat[] = [
-                        'tanggal' => Carbon::parse($presensi->tanggalPresensi)->translatedFormat('l, d F Y'),
+                        'tanggal' => Carbon::parse($presensi->tanggalPresensi)->format('d-m-Y'),
                         'jam_masuk' => $jamMasuk->format('H:i:s'),
                         'jam_shift' => $jamShift->format('H:i:s'),
                         'selisih_menit' => $selisihMenit,
