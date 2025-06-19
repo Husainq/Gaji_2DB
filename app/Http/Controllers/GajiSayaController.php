@@ -21,7 +21,7 @@ class GajiSayaController extends Controller
             ->where('karyawan_id', $karyawan->id)
             ->get();
 
-        // Jika tidak ada data sama sekali, langsung return null
+        // Jika tidak ada data sama sekali
         if ($semuaPresensi->isEmpty()) {
             return Inertia::render('gajiSaya', [
                 'gaji' => null,
@@ -30,13 +30,12 @@ class GajiSayaController extends Controller
             ]);
         }
 
-        // Filter berdasarkan bulan & tahun
+        // Filter berdasarkan bulan dan tahun
         $presensis = $semuaPresensi->filter(function ($item) use ($bulan, $tahun) {
             return Carbon::parse($item->tanggalPresensi)->month == $bulan &&
                    Carbon::parse($item->tanggalPresensi)->year == $tahun;
         });
 
-        // Jika hasil filter kosong, juga return null
         if ($presensis->isEmpty()) {
             return Inertia::render('gajiSaya', [
                 'gaji' => null,
@@ -50,6 +49,7 @@ class GajiSayaController extends Controller
 
         $potonganTidakPresensi = 0;
         $potonganTerlambat = 0;
+        $daftarTerlambat = [];
 
         foreach ($presensis as $presensi) {
             $statusMasuk = $presensi->statusMasuk;
@@ -58,13 +58,30 @@ class GajiSayaController extends Controller
 
             if (!$presensi->waktuMasuk || $statusMasuk === 'Tidak Presensi Masuk') {
                 $potonganTidakPresensi += 300000;
-            } elseif ($statusMasuk === 'Terlambat' && $presensi->jadwalKerja && $presensi->jadwalKerja->shift) {
+            } elseif (
+                $statusMasuk === 'Terlambat' &&
+                $presensi->jadwalKerja &&
+                $presensi->jadwalKerja->shift
+            ) {
                 $jamMasuk = Carbon::parse($presensi->waktuMasuk);
                 $jamShift = Carbon::parse($presensi->jadwalKerja->shift->waktuMulai);
-                if ($jamMasuk->gt($jamShift)) {
-                    $selisihMenit = $jamMasuk->diffInMinutes($jamShift);
+
+                // Hitung selisih dalam menit (hasil bisa negatif)
+                $selisihMenit = $jamMasuk->diffInMinutes($jamShift, false);
+
+                if ($selisihMenit < 0) {
+                    $selisihMenit = abs($selisihMenit);
                     $potonganHariIni = ceil($selisihMenit / 10) * 50000;
-                    $potonganTerlambat += min($potonganHariIni, 300000);
+                    $potonganHariIni = min($potonganHariIni, 300000);
+                    $potonganTerlambat += $potonganHariIni;
+
+                    $daftarTerlambat[] = [
+                        'tanggal' => Carbon::parse($presensi->tanggalPresensi)->translatedFormat('l, d F Y'),
+                        'jam_masuk' => $jamMasuk->format('H:i:s'),
+                        'jam_shift' => $jamShift->format('H:i:s'),
+                        'selisih_menit' => $selisihMenit,
+                        'potongan' => $potonganHariIni,
+                    ];
                 }
             }
         }
@@ -94,6 +111,7 @@ class GajiSayaController extends Controller
                 'total_gaji' => $totalGaji,
                 'hari_kerja' => $hariKerja,
                 'hari_hadir' => $hariHadir,
+                'terlambat_detail' => $daftarTerlambat,
             ],
             'selectedBulan' => $bulan,
             'selectedTahun' => $tahun,
